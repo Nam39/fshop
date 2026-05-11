@@ -82,28 +82,22 @@ $search = isset($_GET['query']) ? trim($_GET['query']) : "";
 
 /* ================= LẤY SẢN PHẨM ================= */
 
-if (!empty($search)) {
+$products = [];
+$searchParam = "%$search%";
 
-    // Đếm sản phẩm tìm kiếm
+if ($currentCategory > 0 && !empty($search)) {
     $countSql = "
         SELECT COUNT(*) AS total
         FROM sanpham
-        WHERE Ten LIKE ?
-        OR MoTa LIKE ?
+        WHERE id_DanhMuc = ?
+        AND (Ten LIKE ? OR MoTa LIKE ?)
     ";
 
     $countStmt = $conn->prepare($countSql);
-
-    $search_param = "%$search%";
-
-    $countStmt->bind_param("ss", $search_param, $search_param);
+    $countStmt->bind_param("iss", $currentCategory, $searchParam, $searchParam);
     $countStmt->execute();
-
     $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
 
-    $totalPages = ceil($totalProducts / $limit);
-
-    // Lấy dữ liệu
     $sql = "
         SELECT *
         FROM sanpham
@@ -114,22 +108,8 @@ if (!empty($search)) {
     ";
 
     $stmt = $conn->prepare($sql);
-
-    $stmt->bind_param(
-        "ssii",
-        $search_param,
-        $search_param,
-        $limit,
-        $offset
-    );
-
-    $stmt->execute();
-
-    $result = $stmt->get_result();
-
+    $stmt->bind_param("issii", $currentCategory, $searchParam, $searchParam, $limit, $offset);
 } elseif ($currentCategory > 0) {
-
-    // Đếm sản phẩm theo danh mục
     $countSql = "
         SELECT COUNT(*) AS total
         FROM sanpham
@@ -139,12 +119,8 @@ if (!empty($search)) {
     $countStmt = $conn->prepare($countSql);
     $countStmt->bind_param("i", $currentCategory);
     $countStmt->execute();
-
     $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
 
-    $totalPages = ceil($totalProducts / $limit);
-
-    // Lấy sản phẩm theo danh mục
     $sql = "
         SELECT *
         FROM sanpham
@@ -154,23 +130,33 @@ if (!empty($search)) {
     ";
 
     $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iii", $currentCategory, $limit, $offset);
+} elseif (!empty($search)) {
+    $countSql = "
+        SELECT COUNT(*) AS total
+        FROM sanpham
+        WHERE Ten LIKE ?
+        OR MoTa LIKE ?
+    ";
 
-    $stmt->bind_param(
-        "iii",
-        $currentCategory,
-        $limit,
-        $offset
-    );
+    $countStmt = $conn->prepare($countSql);
+    $countStmt->bind_param("ss", $searchParam, $searchParam);
+    $countStmt->execute();
+    $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
 
-    $stmt->execute();
+    $sql = "
+        SELECT *
+        FROM sanpham
+        WHERE Ten LIKE ?
+        OR MoTa LIKE ?
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    ";
 
-    $result = $stmt->get_result();
-
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssii", $searchParam, $searchParam, $limit, $offset);
 } else {
-
-    // Tổng sản phẩm
     $countSql = "SELECT COUNT(*) AS total FROM sanpham";
-
     $totalResult = $conn->query($countSql);
 
 if (!empty($search)) {
