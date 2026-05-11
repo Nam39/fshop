@@ -35,6 +35,17 @@ $offset = ($page - 1) * $limit;
 
 /* ================= DANH MỤC ================= */
 
+$categoryMap = [
+    1 => 'Nam',
+    2 => 'Nữ',
+    3 => 'Trẻ Em',
+];
+
+$currentCategory = isset($_GET['danhmuc']) ? (int)$_GET['danhmuc'] : 0;
+if (!array_key_exists($currentCategory, $categoryMap)) {
+    $currentCategory = 0;
+}
+
 $categories = [];
 $categoryNames = [];
 
@@ -46,26 +57,25 @@ $sqlDanhMuc = "
     FROM danhmucsanpham dm
     LEFT JOIN sanpham sp
         ON dm.id_DanhMuc = sp.id_DanhMuc
+    WHERE dm.id_DanhMuc IN (1, 2, 3)
     GROUP BY dm.id_DanhMuc, dm.Ten_DanhMuc
-    ORDER BY dm.id_DanhMuc ASC
+    ORDER BY FIELD(dm.id_DanhMuc, 1, 2, 3), dm.id_DanhMuc ASC
 ";
 
 $danhMucResult = $conn->query($sqlDanhMuc);
 
-if ($danhMucResult) {
-    while ($row = $danhMucResult->fetch_assoc()) {
-        $row['id_DanhMuc'] = (int)$row['id_DanhMuc'];
-        $categories[] = $row;
-        $categoryNames[$row['id_DanhMuc']] = $row['Ten_DanhMuc'];
+while ($row = $danhMucResult->fetch_assoc()) {
+    $row['Ten_DanhMuc'] = $categoryMap[(int)$row['id_DanhMuc']] ?? $row['Ten_DanhMuc'];
+    $categories[] = $row;
+}
+
+$currentCategoryName = '';
+foreach ($categories as $category) {
+    if ((int)$category['id_DanhMuc'] === $currentCategory) {
+        $currentCategoryName = $category['Ten_DanhMuc'];
+        break;
     }
 }
-
-$currentCategory = isset($_GET['danhmuc']) ? (int)$_GET['danhmuc'] : 0;
-if ($currentCategory > 0 && !isset($categoryNames[$currentCategory])) {
-    $currentCategory = 0;
-}
-
-$currentCategoryName = $currentCategory > 0 ? $categoryNames[$currentCategory] : '';
 
 /* ================= TÌM KIẾM ================= */
 
@@ -74,75 +84,122 @@ $search = isset($_GET['query']) ? trim($_GET['query']) : "";
 /* ================= LẤY SẢN PHẨM ================= */
 
 $products = [];
-$totalProducts = 0;
-$where = [];
-$params = [];
-$types = '';
-$limitSql = (int)$limit;
-$offsetSql = (int)$offset;
+$searchParam = "%$search%";
 
-if ($currentCategory > 0) {
-    $where[] = 'sp.id_DanhMuc = ?';
-    $params[] = $currentCategory;
-    $types .= 'i';
-}
+if ($currentCategory > 0 && !empty($search)) {
+    $countSql = "
+        SELECT COUNT(*) AS total
+        FROM sanpham
+        WHERE id_DanhMuc = ?
+        AND (Ten LIKE ? OR MoTa LIKE ?)
+    ";
 
-if ($search !== '') {
-    $searchParam = "%$search%";
-    $where[] = '(sp.Ten LIKE ? OR sp.MoTa LIKE ?)';
-    $params[] = $searchParam;
-    $params[] = $searchParam;
-    $types .= 'ss';
-}
+    $countStmt = $conn->prepare($countSql);
+    $countStmt->bind_param("iss", $currentCategory, $searchParam, $searchParam);
+    $countStmt->execute();
+    $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
 
-$whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+    $sql = "
+        SELECT *
+        FROM sanpham
+        WHERE Ten LIKE ?
+        OR MoTa LIKE ?
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    ";
 
-$countSql = "
-    SELECT COUNT(*) AS total
-    FROM sanpham sp
-    $whereSql
-";
-
-$countStmt = $conn->prepare($countSql);
-
-if ($countStmt) {
-    if (!empty($params)) {
-        $countStmt->bind_param($types, ...$params);
-    }
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("issii", $currentCategory, $searchParam, $searchParam, $limit, $offset);
+} elseif ($currentCategory > 0) {
+    $countSql = "
+        SELECT COUNT(*) AS total
+        FROM sanpham
+        WHERE id_DanhMuc = ?
+    ";
 
     $countStmt->execute();
-    $countResult = $countStmt->get_result();
-    $totalProducts = (int)($countResult->fetch_assoc()['total'] ?? 0);
+    $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
+
+    $sql = "
+        SELECT *
+        FROM sanpham
+        WHERE id_DanhMuc = ?
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    ";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iii", $currentCategory, $limit, $offset);
+} elseif (!empty($search)) {
+    $countSql = "
+        SELECT COUNT(*) AS total
+        FROM sanpham
+        WHERE Ten LIKE ?
+        OR MoTa LIKE ?
+    ";
+
+    $countStmt = $conn->prepare($countSql);
+    $countStmt->bind_param("ss", $searchParam, $searchParam);
+    $countStmt->execute();
+    $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
+
+    $sql = "
+        SELECT *
+        FROM sanpham
+        WHERE Ten LIKE ?
+        OR MoTa LIKE ?
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    ";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssii", $searchParam, $searchParam, $limit, $offset);
+} else {
+    $countSql = "SELECT COUNT(*) AS total FROM sanpham";
+    $totalResult = $conn->query($countSql);
+
+if (!empty($search)) {
+    $whereParts[] = "(Ten LIKE ? OR MoTa LIKE ?)";
+    $searchParam = "%$search%";
+    $params[] = $searchParam;
+    $params[] = $searchParam;
+    $types .= "ss";
 }
 
+$whereSql = !empty($whereParts) ? " WHERE " . implode(" AND ", $whereParts) : "";
+$countSql = "SELECT COUNT(*) AS total FROM sanpham" . $whereSql;
+$countStmt = $conn->prepare($countSql);
+
+    // Lấy tất cả sản phẩm
+    $sql = "
+        SELECT *
+        FROM sanpham
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    ";
+
+$countStmt->execute();
+$totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
+$totalPages = max(1, ceil($totalProducts / $limit));
+
 $sql = "
-    SELECT
-        sp.*,
-        dm.Ten_DanhMuc
-    FROM sanpham sp
-    LEFT JOIN danhmucsanpham dm
-        ON sp.id_DanhMuc = dm.id_DanhMuc
+    SELECT *
+    FROM sanpham
     $whereSql
-    ORDER BY sp.id DESC
+    ORDER BY id DESC
     LIMIT ? OFFSET ?
 ";
 
-$productStmt = $conn->prepare($sql);
+$stmt = $conn->prepare($sql);
+$queryParams = $params;
+$queryParams[] = $limit;
+$queryParams[] = $offset;
+$queryTypes = $types . "ii";
+$stmt->bind_param($queryTypes, ...$queryParams);
+$stmt->execute();
+$result = $stmt->get_result();
 
-if ($productStmt) {
-    $selectParams = $params;
-    $selectParams[] = $limitSql;
-    $selectParams[] = $offsetSql;
-    $selectTypes = $types . 'ii';
-
-    $productStmt->bind_param($selectTypes, ...$selectParams);
-    $productStmt->execute();
-    $productResult = $productStmt->get_result();
-
-    while ($row = $productResult->fetch_assoc()) {
-        $products[] = $row;
-    }
-}
+$products = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
 $totalPages = max(1, (int)ceil($totalProducts / $limit));
 

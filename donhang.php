@@ -35,7 +35,7 @@ $lastOrderId = isset($_SESSION['last_order_id']) ? (int)$_SESSION['last_order_id
 /* ================= LẤY DANH SÁCH ĐƠN HÀNG ================= */
 
 $sql = "
-    SELECT DISTINCT
+    SELECT
         idDonHang,
         ngaydathang,
         trangthai,
@@ -213,6 +213,30 @@ function hienThiTrangThai($status)
                     <tbody>
 
 <?php foreach ($orders as $row): ?>
+
+    <?php
+    $idDonHang = $row['idDonHang'];
+
+    $sqlDetail = "
+        SELECT
+            chitietdonhang.soluong,
+            chitietdonhang.gia,
+            sanpham.Ten,
+            sanpham.Anh,
+            danhmucsanpham.Ten_DanhMuc
+        FROM chitietdonhang
+        JOIN sanpham
+            ON chitietdonhang.idsanpham = sanpham.id
+        LEFT JOIN danhmucsanpham
+            ON sanpham.id_DanhMuc = danhmucsanpham.id_DanhMuc
+        WHERE chitietdonhang.iddonhang = ?
+    ";
+
+    $stmtDetail = $conn->prepare($sqlDetail);
+    $stmtDetail->bind_param("i", $idDonHang);
+    $stmtDetail->execute();
+    $detailResult = $stmtDetail->get_result();
+    ?>
 
     <?php
     $idDonHang = $row['idDonHang'];
