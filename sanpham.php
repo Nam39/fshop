@@ -47,6 +47,7 @@ if (!array_key_exists($currentCategory, $categoryMap)) {
 }
 
 $categories = [];
+$categoryNames = [];
 
 $sqlDanhMuc = "
     SELECT
@@ -116,8 +117,6 @@ if ($currentCategory > 0 && !empty($search)) {
         WHERE id_DanhMuc = ?
     ";
 
-    $countStmt = $conn->prepare($countSql);
-    $countStmt->bind_param("i", $currentCategory);
     $countStmt->execute();
     $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
 
@@ -201,6 +200,8 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 $products = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+$totalPages = max(1, (int)ceil($totalProducts / $limit));
 
 ?>
 
@@ -433,6 +434,8 @@ $products = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
                                         <div class="card-body">
                                             <h5 class="card-title"><?= htmlspecialchars($row['Ten']) ?></h5>
                                             <p class="card-text description-clamp"><?= htmlspecialchars($row['MoTa']) ?></p>
+                                            <p class="mb-1">Danh mục: <b><?= htmlspecialchars($row['Ten_DanhMuc'] ?: 'Không rõ') ?></b></p>
+                                            <p class="mb-1">Tồn kho: <?= (int)$row['soluong'] ?></p>
                                             <p>Giá: <?= number_format($row['Gia'], 0, ',', '.') ?> <b>VNĐ</b></p>
                                             <div class="d-flex align-items-center gap-2 flex-nowrap">
                                                 <a href="detail.php?id=<?= $row['id'] ?>" class="btn btn-primary btn-detail text-nowrap">

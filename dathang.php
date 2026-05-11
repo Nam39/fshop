@@ -14,7 +14,7 @@ $mes = "";
 $idtk = $_SESSION['idtk'];
 
 $sqlUser = "
-    SELECT iduser
+    SELECT iduser, Ten_user, email, sdt, diachi
     FROM users
     WHERE idtk = ?
 ";
@@ -32,6 +32,10 @@ if (!$userData) {
 }
 
 $iduser = $userData['iduser'];
+$profileName = $userData['Ten_user'] ?? '';
+$profileEmail = $userData['email'] ?? '';
+$profilePhone = $userData['sdt'] ?? '';
+$profileAddress = $userData['diachi'] ?? '';
 
 /* ================= LẤY GIỎ HÀNG ================= */
 
@@ -313,6 +317,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
                         <input type="text"
                                name="hoten"
                                class="form-control"
+                               value="<?= htmlspecialchars($profileName) ?>"
+                               readonly
                                required>
                     </div>
 
@@ -324,6 +330,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
                         <input type="email"
                                name="email"
                                class="form-control"
+                               value="<?= htmlspecialchars($profileEmail) ?>"
+                               readonly
                                required>
                     </div>
 
@@ -335,6 +343,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
                         <input type="tel"
                                name="sdt"
                                class="form-control"
+                               value="<?= htmlspecialchars($profilePhone) ?>"
                                required>
                     </div>
 
@@ -346,7 +355,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
                         <textarea name="diachi"
                                   class="form-control"
                                   rows="3"
-                                  required></textarea>
+                                  required><?= htmlspecialchars($profileAddress) ?></textarea>
                     </div>
 
                     <button type="submit"
