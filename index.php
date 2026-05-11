@@ -1,26 +1,94 @@
 <?php
 session_start();
 include "./connect_DB/connect_db.php";
+
 $conn = connectData();
+
+$categories = [];
+$categoryResult = $conn->query("SELECT * FROM danhmucsanpham ORDER BY id_DanhMuc ASC LIMIT 4");
+if ($categoryResult) {
+    $categories = $categoryResult->fetch_all(MYSQLI_ASSOC);
+}
+
+$latestProducts = [];
+$productResult = $conn->query("SELECT * FROM sanpham ORDER BY id DESC LIMIT 10");
+if ($productResult) {
+    $latestProducts = $productResult->fetch_all(MYSQLI_ASSOC);
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trang chủ | UNIQ</title>
     <link href="./assets/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="./assets/fonts/css/all.min.css" rel="stylesheet">
     <style>
-       
-        .navbar-brand {
-            font-weight: bold;
-            color: #007bff;
+        :root {
+            --primary-color: #007bff;
+            --card-radius: 16px;
+            --soft-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
         }
 
-        .carousel img {
-            height: 400px;
+        body {
+            background: #fff;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .hero-carousel {
+            margin-top: 88px;
+        }
+
+        .hero-carousel img {
+            width: 100%;
+            height: 500px;
             object-fit: cover;
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .section-heading p {
+            max-width: 520px;
+        }
+
+        .category-card,
+        .product-card {
+            border: 1px solid #e7e7e7;
+            border-radius: var(--card-radius);
+            background: #fff;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+
+        .category-card:hover,
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--soft-shadow);
+            border-color: rgba(0, 123, 255, 0.25);
+        }
+
+        .category-card {
+            min-height: 130px;
+        }
+
+        .category-card i {
+            color: var(--primary-color);
+        }
+
+        .product-card {
+            height: 100%;
+            padding: 12px;
         }
 
         .product-card img {
@@ -28,33 +96,10 @@ $conn = connectData();
             object-fit: cover;
         }
 
-        .product-card {
-            border: 1px solid #ddd;
-            border-radius: 14px;
-            padding: 12px;
-            transition: 0.3s;
-            background: #fff;
-            height: 100%;
-        }
-
-        .product-card:hover {
-            box-shadow: 0 0 18px rgba(0, 0, 0, 0.16);
-            transform: translateY(-4px);
-        }
-
-        .category-card {
-            transition: 0.3s;
-        }
-
-        .category-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.12);
-        }
-
         .product-marquee {
             overflow: hidden;
             position: relative;
-            padding: 10px 0 20px;
+            padding: 10px 0 24px;
         }
 
         .product-marquee::before,
@@ -62,7 +107,7 @@ $conn = connectData();
             content: "";
             position: absolute;
             top: 0;
-            width: 70px;
+            width: 72px;
             height: 100%;
             z-index: 2;
             pointer-events: none;
@@ -82,7 +127,7 @@ $conn = connectData();
             display: flex;
             gap: 1.5rem;
             width: max-content;
-            animation: productMarquee 35s linear infinite;
+            animation: productMarquee 36s linear infinite;
         }
 
         .product-marquee:hover .product-marquee-track {
@@ -103,110 +148,133 @@ $conn = connectData();
                 transform: translateX(-50%);
             }
         }
+
+        @media (max-width: 768px) {
+            .hero-carousel img {
+                height: 320px;
+            }
+
+            .section-heading {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .product-marquee::before,
+            .product-marquee::after {
+                width: 32px;
+            }
+
+            .marquee-product {
+                flex-basis: 220px;
+                max-width: 220px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .product-marquee-track {
+                animation: none;
+                overflow-x: auto;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <?php include "./assets/layout/header/index.php"; ?>
 
-    <?php
-    include "./assets/layout/header/index.php"
-    ?>
-
-    <div id="myCarousel" class="carousel slide bg-dark mt-4 mb-4" data-bs-ride="carousel">
-        <div class="carousel-indicators">
-            <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
-            <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
-            <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
-        </div>
-
-        <div class="carousel-inner text-center">
-            <div class="carousel-item active">
-                <img src="./assets/img/post-large-image1.jpg" class="d-block mx-auto" style="height: 500px; object-fit: cover;" alt="Slide 1">
+    <main>
+        <section id="myCarousel" class="carousel slide bg-dark mb-4 hero-carousel" data-bs-ride="carousel" aria-label="Banner trang chủ">
+            <div class="carousel-indicators">
+                <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+                <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                <button type="button" data-bs-target="#myCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
             </div>
-            <div class="carousel-item">
-                <img src="./assets/img/post-large-image3.jpg" class="d-block mx-auto" style="height: 500px; object-fit: cover;" alt="Slide 2">
-            </div>
-            <div class="carousel-item">
-                <img src="./assets/img/post-large-image2.jpg" class="d-block mx-auto" style="height: 500px; object-fit: cover;" alt="Slide 3">
-            </div>
-        </div>
 
-        <button class="carousel-control-prev" type="button" data-bs-target="#myCarousel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Previous</span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#myCarousel" data-bs-slide="next">
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Next</span>
-        </button>
-    </div>
+            <div class="carousel-inner text-center">
+                <div class="carousel-item active">
+                    <img src="./assets/img/post-large-image1.jpg" class="d-block mx-auto" alt="Bộ sưu tập thời trang mới">
+                </div>
+                <div class="carousel-item">
+                    <img src="./assets/img/post-large-image3.jpg" class="d-block mx-auto" alt="Sản phẩm nổi bật của UNIQ">
+                </div>
+                <div class="carousel-item">
+                    <img src="./assets/img/post-large-image2.jpg" class="d-block mx-auto" alt="Ưu đãi mua sắm mới nhất">
+                </div>
+            </div>
 
-    <!-- Danh mục -->
-    <div class="container mt-5">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="mb-0">Danh mục sản phẩm</h3>
-            <a href="sanpham.php" class="btn btn-outline-primary btn-sm">Xem tất cả</a>
-        </div>
-        <div class="row">
-            <?php
-            $dm = $conn->query("SELECT * FROM danhmucsanpham LIMIT 4");
-            while ($row = $dm->fetch_assoc()):
-            ?>
-                <div class="col-md-3">
-                    <a href="sanpham.php?danhmuc=<?= $row['id_DanhMuc'] ?>" class="text-decoration-none text-dark">
-                        <div class="card text-center mb-3 category-card">
-                            <div class="card-body">
-                                <i class="fas fa-tag fa-2x mb-2 text-primary"></i>
-                                <h5 class="card-title mb-0"><?= htmlspecialchars($row['Ten_DanhMuc']) ?></h5>
-                            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#myCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#myCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </section>
+
+        <section class="container mt-5" aria-labelledby="category-title">
+            <div class="section-heading">
+                <div>
+                    <h3 id="category-title" class="mb-1">Danh mục sản phẩm</h3>
+                    <p class="text-muted mb-0">Chọn nhanh danh mục bạn quan tâm để xem các sản phẩm phù hợp.</p>
+                </div>
+                <a href="sanpham.php" class="btn btn-outline-primary btn-sm">Xem tất cả</a>
+            </div>
+
+            <?php if (!empty($categories)): ?>
+                <div class="row g-3">
+                    <?php foreach ($categories as $category): ?>
+                        <div class="col-6 col-md-3">
+                            <a href="sanpham.php?danhmuc=<?= $category['id_DanhMuc'] ?>" class="text-decoration-none text-dark">
+                                <article class="card category-card text-center h-100">
+                                    <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                                        <i class="fas fa-tag fa-2x mb-3"></i>
+                                        <h5 class="card-title mb-0"><?= htmlspecialchars($category['Ten_DanhMuc']) ?></h5>
+                                    </div>
+                                </article>
+                            </a>
                         </div>
-                    </a>
+                    <?php endforeach; ?>
                 </div>
-            <?php endwhile; ?>
-        </div>
-    </div>
+            <?php else: ?>
+                <div class="alert alert-info">Chưa có danh mục sản phẩm để hiển thị.</div>
+            <?php endif; ?>
+        </section>
 
-    <!-- Sản phẩm mới lướt phải sang trái -->
-    <div class="container mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h3 class="mb-1">Sản phẩm mới nhất</h3>
-                <p class="text-muted mb-0">Tự động lướt từ phải sang trái, sắp xếp từ mới đến cũ.</p>
+        <section class="container mt-5" aria-labelledby="latest-products-title">
+            <div class="section-heading">
+                <div>
+                    <h3 id="latest-products-title" class="mb-1">Sản phẩm mới nhất</h3>
+                    <p class="text-muted mb-0">Sản phẩm được sắp xếp từ mới đến cũ và tự động lướt từ phải sang trái.</p>
+                </div>
+                <a href="sanpham.php" class="btn btn-primary btn-sm">Mua sắm ngay</a>
             </div>
-            <a href="sanpham.php" class="btn btn-primary btn-sm">Mua sắm ngay</a>
-        </div>
 
-        <?php
-        $sp = $conn->query("SELECT * FROM sanpham ORDER BY id DESC LIMIT 10");
-        $latestProducts = $sp ? $sp->fetch_all(MYSQLI_ASSOC) : [];
-        ?>
-
-        <?php if (!empty($latestProducts)): ?>
-            <div class="product-marquee" aria-label="Sản phẩm mới nhất">
-                <div class="product-marquee-track">
-                    <?php for ($loop = 0; $loop < 2; $loop++): ?>
-                        <?php foreach ($latestProducts as $item): ?>
-                            <div class="marquee-product">
-                                <div class="product-card mb-4">
-                                    <img src="./assets/img/<?= htmlspecialchars($item['Anh']) ?>" class="w-100 rounded mb-2" alt="<?= htmlspecialchars($item['Ten']) ?>">
-                                    <h5 class="text-truncate"><?= htmlspecialchars($item['Ten']) ?></h5>
-                                    <p class="text-danger fw-semibold mb-2"><?= number_format($item['Gia'], 0, ',', '.') ?> VNĐ</p>
-                                    <a href="detail.php?id=<?= $item['id'] ?>" class="btn btn-sm btn-primary w-100">Xem chi tiết</a>
+            <?php if (!empty($latestProducts)): ?>
+                <div class="product-marquee" aria-label="Danh sách sản phẩm mới nhất lướt ngang">
+                    <div class="product-marquee-track">
+                        <?php for ($loop = 0; $loop < 2; $loop++): ?>
+                            <?php foreach ($latestProducts as $product): ?>
+                                <div class="marquee-product">
+                                    <article class="product-card mb-4">
+                                        <img src="./assets/img/<?= htmlspecialchars($product['Anh']) ?>" class="w-100 rounded mb-3" alt="<?= htmlspecialchars($product['Ten']) ?>">
+                                        <h5 class="text-truncate mb-2"><?= htmlspecialchars($product['Ten']) ?></h5>
+                                        <p class="text-danger fw-semibold mb-3"><?= number_format($product['Gia'], 0, ',', '.') ?> VNĐ</p>
+                                        <a href="detail.php?id=<?= $product['id'] ?>" class="btn btn-sm btn-primary w-100">Xem chi tiết</a>
+                                    </article>
                                 </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endfor; ?>
+                            <?php endforeach; ?>
+                        <?php endfor; ?>
+                    </div>
                 </div>
-            </div>
-        <?php else: ?>
-            <div class="alert alert-info">Chưa có sản phẩm để hiển thị.</div>
-        <?php endif; ?>
-    </div>
+            <?php else: ?>
+                <div class="alert alert-info">Chưa có sản phẩm để hiển thị.</div>
+            <?php endif; ?>
+        </section>
+    </main>
 
-    <?php
-    include "./assets/layout/footer/index.php"
-    ?>
-
+    <?php include "./assets/layout/footer/index.php"; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
