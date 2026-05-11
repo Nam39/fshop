@@ -30,13 +30,78 @@ $conn = connectData();
 
         .product-card {
             border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 10px;
+            border-radius: 14px;
+            padding: 12px;
             transition: 0.3s;
+            background: #fff;
+            height: 100%;
         }
 
         .product-card:hover {
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 0 18px rgba(0, 0, 0, 0.16);
+            transform: translateY(-4px);
+        }
+
+        .category-card {
+            transition: 0.3s;
+        }
+
+        .category-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.12);
+        }
+
+        .product-marquee {
+            overflow: hidden;
+            position: relative;
+            padding: 10px 0 20px;
+        }
+
+        .product-marquee::before,
+        .product-marquee::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            width: 70px;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .product-marquee::before {
+            left: 0;
+            background: linear-gradient(90deg, #fff 0%, rgba(255, 255, 255, 0) 100%);
+        }
+
+        .product-marquee::after {
+            right: 0;
+            background: linear-gradient(270deg, #fff 0%, rgba(255, 255, 255, 0) 100%);
+        }
+
+        .product-marquee-track {
+            display: flex;
+            gap: 1.5rem;
+            width: max-content;
+            animation: productMarquee 35s linear infinite;
+        }
+
+        .product-marquee:hover .product-marquee-track {
+            animation-play-state: paused;
+        }
+
+        .marquee-product {
+            flex: 0 0 260px;
+            max-width: 260px;
+        }
+
+        @keyframes productMarquee {
+            from {
+                transform: translateX(0);
+            }
+
+            to {
+                transform: translateX(-50%);
+            }
         }
     </style>
 </head>
@@ -78,42 +143,64 @@ $conn = connectData();
 
     <!-- Danh mục -->
     <div class="container mt-5">
-        <h3>Danh mục sản phẩm</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">Danh mục sản phẩm</h3>
+            <a href="sanpham.php" class="btn btn-outline-primary btn-sm">Xem tất cả</a>
+        </div>
         <div class="row">
             <?php
             $dm = $conn->query("SELECT * FROM danhmucsanpham LIMIT 4");
             while ($row = $dm->fetch_assoc()):
             ?>
                 <div class="col-md-3">
-                    <div class="card text-center mb-3">
-                        <div class="card-body">
-                            <i class="fas fa-tag fa-2x mb-2"></i>
-                            <h5 class="card-title"><?= htmlspecialchars($row['Ten_DanhMuc']) ?></h5>
+                    <a href="sanpham.php?danhmuc=<?= $row['id_DanhMuc'] ?>" class="text-decoration-none text-dark">
+                        <div class="card text-center mb-3 category-card">
+                            <div class="card-body">
+                                <i class="fas fa-tag fa-2x mb-2 text-primary"></i>
+                                <h5 class="card-title mb-0"><?= htmlspecialchars($row['Ten_DanhMuc']) ?></h5>
+                            </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             <?php endwhile; ?>
         </div>
     </div>
 
-    <!-- Sản phẩm nổi bật -->
+    <!-- Sản phẩm mới lướt phải sang trái -->
     <div class="container mt-4">
-        <h3>Sản phẩm nổi bật</h3>
-        <div class="row">
-            <?php
-            $sp = $conn->query("SELECT * FROM sanpham ORDER BY id DESC LIMIT 4");
-            while ($item = $sp->fetch_assoc()):
-            ?>
-                <div class="col-md-3">
-                    <div class="product-card mb-4">
-                        <img src="./assets/img/<?= htmlspecialchars($item['Anh']) ?>" class="w-100 rounded mb-2">
-                        <h5><?= htmlspecialchars($item['Ten']) ?></h5>
-                        <p class="text-danger"><?= number_format($item['Gia'], 0, ',', '.') ?> VNĐ</p>
-                        <a href="detail.php?id=<?= $item['id'] ?>" class="btn btn-sm btn-primary">Xem chi tiết</a>
-                    </div>
-                </div>
-            <?php endwhile; ?>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h3 class="mb-1">Sản phẩm mới nhất</h3>
+                <p class="text-muted mb-0">Tự động lướt từ phải sang trái, sắp xếp từ mới đến cũ.</p>
+            </div>
+            <a href="sanpham.php" class="btn btn-primary btn-sm">Mua sắm ngay</a>
         </div>
+
+        <?php
+        $sp = $conn->query("SELECT * FROM sanpham ORDER BY id DESC LIMIT 10");
+        $latestProducts = $sp ? $sp->fetch_all(MYSQLI_ASSOC) : [];
+        ?>
+
+        <?php if (!empty($latestProducts)): ?>
+            <div class="product-marquee" aria-label="Sản phẩm mới nhất">
+                <div class="product-marquee-track">
+                    <?php for ($loop = 0; $loop < 2; $loop++): ?>
+                        <?php foreach ($latestProducts as $item): ?>
+                            <div class="marquee-product">
+                                <div class="product-card mb-4">
+                                    <img src="./assets/img/<?= htmlspecialchars($item['Anh']) ?>" class="w-100 rounded mb-2" alt="<?= htmlspecialchars($item['Ten']) ?>">
+                                    <h5 class="text-truncate"><?= htmlspecialchars($item['Ten']) ?></h5>
+                                    <p class="text-danger fw-semibold mb-2"><?= number_format($item['Gia'], 0, ',', '.') ?> VNĐ</p>
+                                    <a href="detail.php?id=<?= $item['id'] ?>" class="btn btn-sm btn-primary w-100">Xem chi tiết</a>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endfor; ?>
+                </div>
+            </div>
+        <?php else: ?>
+            <div class="alert alert-info">Chưa có sản phẩm để hiển thị.</div>
+        <?php endif; ?>
     </div>
 
     <?php
