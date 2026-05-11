@@ -29,9 +29,8 @@ if (isset($_SESSION['idtk'])) {
 
 /* ================= PHÂN TRANG ================= */
 
-$limit = 8;
+$limit = 4;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$offset = ($page - 1) * $limit;
 
 /* ================= DANH MỤC ================= */
 
@@ -300,6 +299,72 @@ $totalPages = max(1, (int)ceil($totalProducts / $limit));
 .active-category span {
     color: white !important;
 }
+
+        .product-layout {
+            align-items: flex-start;
+        }
+
+        .category-panel {
+            position: sticky;
+            top: 92px;
+        }
+
+        .category-panel .list-item {
+            gap: 8px;
+            padding: 10px 12px;
+            border-bottom: 1px solid #edf0f2;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 24px;
+        }
+
+        .product-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+        }
+
+        .product-card img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            background: #f8f9fa;
+        }
+
+        .product-card .card-body {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+        }
+
+        .product-actions {
+            margin-top: auto;
+        }
+
+        @media (max-width: 1199.98px) {
+            .product-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .category-panel {
+                position: static;
+            }
+
+            .product-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
     </style>
 </head>
 
@@ -396,31 +461,43 @@ $totalPages = max(1, (int)ceil($totalProducts / $limit));
             <div class="col-md-2">
     <p class="text-title">Danh mục</p>
 
-    <ul class="list-group list-cus">
+                        <ul class="list-group list-cus">
 
         <!-- TẤT CẢ -->
         <li class="list-item d-flex justify-content-between
             <?= $currentCategory == 0 ? 'active-category' : '' ?>">
 
-            <a href="sanpham.php">Tất cả</a>
-        </li>
+                                <a href="sanpham.php">Tất cả</a>
+                                <span>(<?= $allCategoryProducts ?>)</span>
+                            </li>
 
-        <?php foreach ($categories as $dm): ?>
+                            <?php foreach ($categories as $dm): ?>
 
-            <li class="list-item d-flex justify-content-between
-                <?= $currentCategory == $dm['id_DanhMuc'] ? 'active-category' : '' ?>">
+                                <li class="list-item d-flex justify-content-between align-items-center
+                                    <?= $currentCategory == $dm['id_DanhMuc'] ? 'active-category' : '' ?>">
 
                 <a href="sanpham.php?danhmuc=<?= $dm['id_DanhMuc'] ?>">
                     <?= htmlspecialchars($dm['Ten_DanhMuc']) ?>
                 </a>
 
-                <span>(<?= $dm['total'] ?>)</span>
-            </li>
+                                    <span>(<?= $dm['total'] ?>)</span>
+                                </li>
 
-        <?php endforeach; ?>
+                            <?php endforeach; ?>
 
-    </ul>
-</div>
+                        </ul>
+                    </div>
+                </aside>
+
+                <section class="col-12 col-lg-9 col-xl-10">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <p class="text-muted mb-0">
+                            Hiển thị tối đa <?= $limit ?> sản phẩm / trang
+                            <?php if ($totalProducts > 0): ?>
+                                (trang <?= $page ?> / <?= $totalPages ?>, tổng <?= $totalProducts ?> sản phẩm)
+                            <?php endif; ?>
+                        </p>
+                    </div>
 
                 <div class="col-md-10">
                     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
