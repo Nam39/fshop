@@ -305,10 +305,6 @@ $products = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 <body>
     <div class="main">
 
-        <?php
-        include "./assets/layout/header/index.php"
-        ?>
-
         <nav class="navbar navbar-expand-lg navbar-light bg-light shadow position-fixed nav">
             <div class="container">
                 <a class="navbar-brand fw-bold text-primary" href="./">UNIQ</a>
