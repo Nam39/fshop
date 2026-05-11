@@ -14,7 +14,7 @@ $mes = "";
 $idtk = $_SESSION['idtk'];
 
 $sqlUser = "
-    SELECT iduser
+    SELECT iduser, Ten_user, email, sdt, diachi
     FROM users
     WHERE idtk = ?
 ";
@@ -32,6 +32,10 @@ if (!$userData) {
 }
 
 $iduser = $userData['iduser'];
+$profileName = trim((string)($userData['Ten_user'] ?? ''));
+$profileEmail = trim((string)($userData['email'] ?? ''));
+$profilePhone = trim((string)($userData['sdt'] ?? ''));
+$profileAddress = trim((string)($userData['diachi'] ?? ''));
 
 /* ================= LẤY GIỎ HÀNG ================= */
 
@@ -70,10 +74,14 @@ foreach ($items as $item) {
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
 
-    $hoten = trim($_POST['hoten']);
-    $email = trim($_POST['email']);
-    $sdt = trim($_POST['sdt']);
-    $diachi = trim($_POST['diachi']);
+    if (empty($items)) {
+        $mes = "Giỏ hàng trống, vui lòng thêm sản phẩm trước khi đặt hàng.";
+    } else {
+
+    $hoten = $profileName;
+    $email = $profileEmail;
+    $sdt = trim($_POST['sdt'] ?? $profilePhone);
+    $diachi = trim($_POST['diachi'] ?? $profileAddress);
 
     if (
         empty($hoten) ||
@@ -92,35 +100,57 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
 
             /* ================= TẠO ĐƠN HÀNG ================= */
 
-            $sqlInsertDonHang = "
-    INSERT INTO donhang
-    (
-        idKhach,
-        hoten,
-        email,
-        sodienthoai,
-        diachi,
-        tongtien,
-        trangthai,
-        ngaydathang
-    )
-    VALUES
-    (?, ?, ?, ?, ?, ?, 0, NOW())
-";
+            $hasShippingColumns = $conn->query("SHOW COLUMNS FROM donhang LIKE 'hoten'")->num_rows > 0;
 
-$stmtDonHang = $conn->prepare($sqlInsertDonHang);
+            if ($hasShippingColumns) {
+                $sqlInsertDonHang = "
+                    INSERT INTO donhang
+                    (
+                        idKhach,
+                        hoten,
+                        email,
+                        sodienthoai,
+                        diachi,
+                        tongtien,
+                        trangthai,
+                        ngaydathang
+                    )
+                    VALUES
+                    (?, ?, ?, ?, ?, ?, 0, NOW())
+                ";
 
-$stmtDonHang->bind_param(
-    "issssd",
-    $iduser,
-    $hoten,
-    $email,
-    $sdt,
-    $diachi,
-    $total
-);
+                $stmtDonHang = $conn->prepare($sqlInsertDonHang);
+                $stmtDonHang->bind_param(
+                    "issssd",
+                    $iduser,
+                    $hoten,
+                    $email,
+                    $sdt,
+                    $diachi,
+                    $total
+                );
+            } else {
+                $sqlInsertDonHang = "
+                    INSERT INTO donhang
+                    (
+                        idKhach,
+                        tongtien,
+                        trangthai,
+                        ngaydathang
+                    )
+                    VALUES
+                    (?, ?, 0, NOW())
+                ";
 
-$stmtDonHang->execute();
+                $stmtDonHang = $conn->prepare($sqlInsertDonHang);
+                $stmtDonHang->bind_param(
+                    "id",
+                    $iduser,
+                    $total
+                );
+            }
+
+            $stmtDonHang->execute();
 
             $iddonhang = $conn->insert_id;
 
@@ -195,6 +225,8 @@ $stmtDonHang->execute();
 
             $conn->commit();
 
+            $_SESSION['last_order_id'] = $iddonhang;
+
             header("Location: donhang.php");
 
             exit();
@@ -205,6 +237,7 @@ $stmtDonHang->execute();
 
             $mes = $e->getMessage();
         }
+    }
     }
 }
 ?>
@@ -246,6 +279,15 @@ $stmtDonHang->execute();
             object-fit: cover;
         }
 
+        .fixed-profile-field {
+            min-height: 38px;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            background-color: #e9ecef;
+            color: #212529;
+            cursor: not-allowed;
+        }
+
     </style>
 </head>
 
@@ -281,10 +323,13 @@ $stmtDonHang->execute();
                             Họ và tên
                         </label>
 
-                        <input type="text"
-                               name="hoten"
-                               class="form-control"
-                               required>
+                        <div class="fixed-profile-field d-flex align-items-center px-3">
+                            <?= htmlspecialchars($profileName) ?>
+                        </div>
+
+                        <small class="text-muted">
+                            Họ và tên được lấy cố định từ hồ sơ người dùng.
+                        </small>
                     </div>
 
                     <div class="mb-3">
@@ -292,10 +337,13 @@ $stmtDonHang->execute();
                             Email
                         </label>
 
-                        <input type="email"
-                               name="email"
-                               class="form-control"
-                               required>
+                        <div class="fixed-profile-field d-flex align-items-center px-3">
+                            <?= htmlspecialchars($profileEmail) ?>
+                        </div>
+
+                        <small class="text-muted">
+                            Email được lấy cố định từ email đã đăng ký.
+                        </small>
                     </div>
 
                     <div class="mb-3">
@@ -306,6 +354,7 @@ $stmtDonHang->execute();
                         <input type="tel"
                                name="sdt"
                                class="form-control"
+                               value="<?= htmlspecialchars($profilePhone) ?>"
                                required>
                     </div>
 
@@ -317,7 +366,7 @@ $stmtDonHang->execute();
                         <textarea name="diachi"
                                   class="form-control"
                                   rows="3"
-                                  required></textarea>
+                                  required><?= htmlspecialchars($profileAddress) ?></textarea>
                     </div>
 
                     <button type="submit"
