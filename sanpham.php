@@ -48,12 +48,21 @@ $sqlDanhMuc = "
     LEFT JOIN sanpham sp 
         ON dm.id_DanhMuc = sp.id_DanhMuc
     GROUP BY dm.id_DanhMuc, dm.Ten_DanhMuc
+    ORDER BY FIELD(dm.id_DanhMuc, 1, 2, 3), dm.id_DanhMuc ASC
 ";
 
 $danhMucResult = $conn->query($sqlDanhMuc);
 
 while ($row = $danhMucResult->fetch_assoc()) {
     $categories[] = $row;
+}
+
+$currentCategoryName = '';
+foreach ($categories as $category) {
+    if ((int)$category['id_DanhMuc'] === $currentCategory) {
+        $currentCategoryName = $category['Ten_DanhMuc'];
+        break;
+    }
 }
 
 /* ================= TÌM KIẾM ================= */
@@ -89,6 +98,7 @@ if (!empty($search)) {
         FROM sanpham
         WHERE Ten LIKE ?
         OR MoTa LIKE ?
+        ORDER BY id DESC
         LIMIT ? OFFSET ?
     ";
 
@@ -128,6 +138,7 @@ if (!empty($search)) {
         SELECT *
         FROM sanpham
         WHERE id_DanhMuc = ?
+        ORDER BY id DESC
         LIMIT ? OFFSET ?
     ";
 
@@ -159,6 +170,7 @@ if (!empty($search)) {
     $sql = "
         SELECT *
         FROM sanpham
+        ORDER BY id DESC
         LIMIT ? OFFSET ?
     ";
 
@@ -355,6 +367,15 @@ if (!empty($search)) {
         </div>
 
         <div class="container mt-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div>
+                    <h3 class="mb-1">
+                        <?= $currentCategoryName ? 'Sản phẩm ' . htmlspecialchars($currentCategoryName) : 'Tất cả sản phẩm' ?>
+                    </h3>
+                    <p class="text-muted mb-0">Chọn danh mục Nam, Nữ hoặc Trẻ Em để xem đúng nhóm sản phẩm.</p>
+                </div>
+                <a href="sanpham.php" class="btn btn-outline-primary btn-sm mt-2 mt-md-0">Xem tất cả</a>
+            </div>
             <div class="row">
             <div class="col-md-2">
     <p class="text-title">Danh mục</p>
@@ -373,7 +394,7 @@ if (!empty($search)) {
             <li class="list-item d-flex justify-content-between
                 <?= $currentCategory == $dm['id_DanhMuc'] ? 'active-category' : '' ?>">
 
-                <a href="?danhmuc=<?= $dm['id_DanhMuc'] ?>">
+                <a href="sanpham.php?danhmuc=<?= $dm['id_DanhMuc'] ?>">
                     <?= htmlspecialchars($dm['Ten_DanhMuc']) ?>
                 </a>
 
