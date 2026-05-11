@@ -34,7 +34,7 @@ $iduser = $userData['iduser'];
 /* ================= LẤY DANH SÁCH ĐƠN HÀNG ================= */
 
 $sql = "
-    SELECT 
+    SELECT
         idDonHang,
         ngaydathang,
         trangthai,
@@ -194,6 +194,30 @@ function hienThiTrangThai($status)
 
 <?php while ($row = $result->fetch_assoc()): ?>
 
+    <?php
+    $idDonHang = $row['idDonHang'];
+
+    $sqlDetail = "
+        SELECT
+            chitietdonhang.soluong,
+            chitietdonhang.gia,
+            sanpham.Ten,
+            sanpham.Anh,
+            danhmucsanpham.Ten_DanhMuc
+        FROM chitietdonhang
+        JOIN sanpham
+            ON chitietdonhang.idsanpham = sanpham.id
+        LEFT JOIN danhmucsanpham
+            ON sanpham.id_DanhMuc = danhmucsanpham.id_DanhMuc
+        WHERE chitietdonhang.iddonhang = ?
+    ";
+
+    $stmtDetail = $conn->prepare($sqlDetail);
+    $stmtDetail->bind_param("i", $idDonHang);
+    $stmtDetail->execute();
+    $detailResult = $stmtDetail->get_result();
+    ?>
+
     <tr>
 
         <td class="order-id">
@@ -207,50 +231,7 @@ function hienThiTrangThai($status)
             ) ?>
         </td>
 
-        <td class="fw-bold text-danger">
-            <?= number_format(
-                $row['tongtien'],
-                0,
-                ',',
-                '.'
-            ) ?> VNĐ
-        </td>
-
         <td>
-            <?= hienThiTrangThai($row['trangthai']) ?>
-        </td>
-
-        <td>
-
-            <?php
-
-            $idDonHang = $row['idDonHang'];
-
-            $sqlDetail = "
-                SELECT 
-                    chitietdonhang.soluong,
-                    chitietdonhang.gia,
-                    sanpham.Ten,
-                    sanpham.Anh
-                FROM chitietdonhang
-                JOIN sanpham
-                    ON chitietdonhang.idsanpham = sanpham.id
-                WHERE chitietdonhang.iddonhang = ?
-            ";
-
-            $stmtDetail = $conn->prepare($sqlDetail);
-
-            $stmtDetail->bind_param(
-                "i",
-                $idDonHang
-            );
-
-            $stmtDetail->execute();
-
-            $detailResult = $stmtDetail->get_result();
-
-            ?>
-
             <?php if ($detailResult->num_rows > 0): ?>
 
                 <?php while ($sp = $detailResult->fetch_assoc()): ?>
@@ -263,6 +244,7 @@ function hienThiTrangThai($status)
                                 src="./assets/img/<?= htmlspecialchars($sp['Anh']) ?>"
                                 width="60"
                                 class="me-2 rounded"
+                                alt="<?= htmlspecialchars($sp['Ten']) ?>"
                             >
 
                             <div>
@@ -270,6 +252,12 @@ function hienThiTrangThai($status)
                                 <div class="fw-bold">
                                     <?= htmlspecialchars($sp['Ten']) ?>
                                 </div>
+
+                                <small>
+                                    Danh mục: <?= htmlspecialchars($sp['Ten_DanhMuc'] ?? 'Không rõ') ?>
+                                </small>
+
+                                <br>
 
                                 <small>
                                     SL: <?= $sp['soluong'] ?>
@@ -301,7 +289,19 @@ function hienThiTrangThai($status)
                 </span>
 
             <?php endif; ?>
+        </td>
 
+        <td class="fw-bold text-danger">
+            <?= number_format(
+                $row['tongtien'],
+                0,
+                ',',
+                '.'
+            ) ?> VNĐ
+        </td>
+
+        <td>
+            <?= hienThiTrangThai($row['trangthai']) ?>
         </td>
 
     </tr>
