@@ -79,8 +79,9 @@ foreach ($categories as $category) {
 /* ================= TÌM KIẾM ================= */
 
 $search = isset($_GET['query']) ? trim($_GET['query']) : "";
+$searchParam = "%$search%";
 
-/* ================= LẤY SẢN PHẨM ================= */
+/* ================= ĐẾM VÀ LẤY SẢN PHẨM ================= */
 
 $products = [];
 $searchParam = "%$search%";
@@ -206,6 +207,9 @@ ksort($categories);
 ksort($productsByCategory);
 $totalProducts = count($products);
 $allCategoryProducts = array_sum(array_column($categories, 'total'));
+$visibleCategories = $categories;
+
+ksort($productsByCategory);
 $visibleCategories = $categories;
 
 ?>
