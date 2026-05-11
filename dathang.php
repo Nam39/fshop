@@ -32,10 +32,10 @@ if (!$userData) {
 }
 
 $iduser = $userData['iduser'];
-$profileName = trim((string)($userData['Ten_user'] ?? ''));
-$profileEmail = trim((string)($userData['email'] ?? ''));
-$profilePhone = trim((string)($userData['sdt'] ?? ''));
-$profileAddress = trim((string)($userData['diachi'] ?? ''));
+$profileName = $userData['Ten_user'] ?? '';
+$profileEmail = $userData['email'] ?? '';
+$profilePhone = $userData['sdt'] ?? '';
+$profileAddress = $userData['diachi'] ?? '';
 
 /* ================= LẤY GIỎ HÀNG ================= */
 
@@ -78,10 +78,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
         $mes = "Giỏ hàng trống, vui lòng thêm sản phẩm trước khi đặt hàng.";
     } else {
 
-    $hoten = $profileName;
-    $email = $profileEmail;
-    $sdt = trim($_POST['sdt'] ?? $profilePhone);
-    $diachi = trim($_POST['diachi'] ?? $profileAddress);
+    $hoten = trim($_POST['hoten']);
+    $email = trim($_POST['email']);
+    $sdt = trim($_POST['sdt']);
+    $diachi = trim($_POST['diachi']);
 
     if (
         empty($hoten) ||
@@ -323,13 +323,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
                             Họ và tên
                         </label>
 
-                        <div class="fixed-profile-field d-flex align-items-center px-3">
-                            <?= htmlspecialchars($profileName) ?>
-                        </div>
-
-                        <small class="text-muted">
-                            Họ và tên được lấy cố định từ hồ sơ người dùng.
-                        </small>
+                        <input type="text"
+                               name="hoten"
+                               class="form-control"
+                               value="<?= htmlspecialchars($profileName) ?>"
+                               readonly
+                               required>
                     </div>
 
                     <div class="mb-3">
@@ -337,13 +336,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
                             Email
                         </label>
 
-                        <div class="fixed-profile-field d-flex align-items-center px-3">
-                            <?= htmlspecialchars($profileEmail) ?>
-                        </div>
-
-                        <small class="text-muted">
-                            Email được lấy cố định từ email đã đăng ký.
-                        </small>
+                        <input type="email"
+                               name="email"
+                               class="form-control"
+                               value="<?= htmlspecialchars($profileEmail) ?>"
+                               readonly
+                               required>
                     </div>
 
                     <div class="mb-3">
