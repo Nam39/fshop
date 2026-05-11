@@ -78,10 +78,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
         $mes = "Giỏ hàng trống, vui lòng thêm sản phẩm trước khi đặt hàng.";
     } else {
 
-    $hoten = $profileName;
-    $email = $profileEmail;
-    $sdt = trim($_POST['sdt'] ?? $profilePhone);
-    $diachi = trim($_POST['diachi'] ?? $profileAddress);
+    $hoten = trim($_POST['hoten']);
+    $email = trim($_POST['email']);
+    $sdt = trim($_POST['sdt']);
+    $diachi = trim($_POST['diachi']);
 
     if (
         empty($hoten) ||
