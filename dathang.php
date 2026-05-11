@@ -279,6 +279,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
             object-fit: cover;
         }
 
+        .fixed-profile-field {
+            min-height: 38px;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            background-color: #e9ecef;
+            color: #212529;
+            cursor: not-allowed;
+        }
+
     </style>
 </head>
 

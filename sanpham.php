@@ -525,8 +525,8 @@ $totalPages = max(1, (int)ceil($totalProducts / $limit));
                                                     </button>
                                                 </form>
                                             </div>
-                                        </div>
-                                    </div>
+                                        </article>
+                                    <?php endforeach; ?>
                                 </div>
                             <?php endforeach; ?>
                         <?php else: ?>
