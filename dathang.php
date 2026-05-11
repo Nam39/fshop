@@ -70,6 +70,10 @@ foreach ($items as $item) {
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
 
+    if (empty($items)) {
+        $mes = "Giỏ hàng trống, vui lòng thêm sản phẩm trước khi đặt hàng.";
+    } else {
+
     $hoten = trim($_POST['hoten']);
     $email = trim($_POST['email']);
     $sdt = trim($_POST['sdt']);
@@ -92,35 +96,57 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dathang'])) {
 
             /* ================= TẠO ĐƠN HÀNG ================= */
 
-            $sqlInsertDonHang = "
-    INSERT INTO donhang
-    (
-        idKhach,
-        hoten,
-        email,
-        sodienthoai,
-        diachi,
-        tongtien,
-        trangthai,
-        ngaydathang
-    )
-    VALUES
-    (?, ?, ?, ?, ?, ?, 0, NOW())
-";
+            $hasShippingColumns = $conn->query("SHOW COLUMNS FROM donhang LIKE 'hoten'")->num_rows > 0;
 
-$stmtDonHang = $conn->prepare($sqlInsertDonHang);
+            if ($hasShippingColumns) {
+                $sqlInsertDonHang = "
+                    INSERT INTO donhang
+                    (
+                        idKhach,
+                        hoten,
+                        email,
+                        sodienthoai,
+                        diachi,
+                        tongtien,
+                        trangthai,
+                        ngaydathang
+                    )
+                    VALUES
+                    (?, ?, ?, ?, ?, ?, 0, NOW())
+                ";
 
-$stmtDonHang->bind_param(
-    "issssd",
-    $iduser,
-    $hoten,
-    $email,
-    $sdt,
-    $diachi,
-    $total
-);
+                $stmtDonHang = $conn->prepare($sqlInsertDonHang);
+                $stmtDonHang->bind_param(
+                    "issssd",
+                    $iduser,
+                    $hoten,
+                    $email,
+                    $sdt,
+                    $diachi,
+                    $total
+                );
+            } else {
+                $sqlInsertDonHang = "
+                    INSERT INTO donhang
+                    (
+                        idKhach,
+                        tongtien,
+                        trangthai,
+                        ngaydathang
+                    )
+                    VALUES
+                    (?, ?, 0, NOW())
+                ";
 
-$stmtDonHang->execute();
+                $stmtDonHang = $conn->prepare($sqlInsertDonHang);
+                $stmtDonHang->bind_param(
+                    "id",
+                    $iduser,
+                    $total
+                );
+            }
+
+            $stmtDonHang->execute();
 
             $iddonhang = $conn->insert_id;
 
@@ -195,6 +221,8 @@ $stmtDonHang->execute();
 
             $conn->commit();
 
+            $_SESSION['last_order_id'] = $iddonhang;
+
             header("Location: donhang.php");
 
             exit();
@@ -205,6 +233,7 @@ $stmtDonHang->execute();
 
             $mes = $e->getMessage();
         }
+    }
     }
 }
 ?>
