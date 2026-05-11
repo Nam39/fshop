@@ -34,6 +34,17 @@ $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 
 /* ================= DANH MỤC ================= */
 
+$categoryMap = [
+    1 => 'Nam',
+    2 => 'Nữ',
+    3 => 'Trẻ Em',
+];
+
+$currentCategory = isset($_GET['danhmuc']) ? (int)$_GET['danhmuc'] : 0;
+if (!array_key_exists($currentCategory, $categoryMap)) {
+    $currentCategory = 0;
+}
+
 $categories = [];
 $categoryNames = [];
 
@@ -45,28 +56,25 @@ $sqlDanhMuc = "
     FROM danhmucsanpham dm
     LEFT JOIN sanpham sp
         ON dm.id_DanhMuc = sp.id_DanhMuc
+    WHERE dm.id_DanhMuc IN (1, 2, 3)
     GROUP BY dm.id_DanhMuc, dm.Ten_DanhMuc
-    ORDER BY dm.id_DanhMuc ASC
+    ORDER BY FIELD(dm.id_DanhMuc, 1, 2, 3), dm.id_DanhMuc ASC
 ";
 
 $danhMucResult = $conn->query($sqlDanhMuc);
 
-if ($danhMucResult) {
-    while ($row = $danhMucResult->fetch_assoc()) {
-        $row['id_DanhMuc'] = (int)$row['id_DanhMuc'];
-        $categories[] = $row;
-        $categoryNames[$row['id_DanhMuc']] = $row['Ten_DanhMuc'];
+while ($row = $danhMucResult->fetch_assoc()) {
+    $row['Ten_DanhMuc'] = $categoryMap[(int)$row['id_DanhMuc']] ?? $row['Ten_DanhMuc'];
+    $categories[] = $row;
+}
+
+$currentCategoryName = '';
+foreach ($categories as $category) {
+    if ((int)$category['id_DanhMuc'] === $currentCategory) {
+        $currentCategoryName = $category['Ten_DanhMuc'];
+        break;
     }
 }
-
-$allCategoryProducts = array_sum(array_map('intval', array_column($categories, 'total')));
-
-$currentCategory = isset($_GET['danhmuc']) ? (int)$_GET['danhmuc'] : 0;
-if ($currentCategory > 0 && !isset($categoryNames[$currentCategory])) {
-    $currentCategory = 0;
-}
-
-$currentCategoryName = $currentCategory > 0 ? $categoryNames[$currentCategory] : '';
 
 /* ================= TÌM KIẾM ================= */
 
@@ -75,94 +83,124 @@ $search = isset($_GET['query']) ? trim($_GET['query']) : "";
 /* ================= LẤY SẢN PHẨM ================= */
 
 $products = [];
-$totalProducts = 0;
-$where = [];
-$params = [];
-$types = '';
+$searchParam = "%$search%";
 
-if ($currentCategory > 0) {
-    $where[] = 'sp.id_DanhMuc = ?';
-    $params[] = $currentCategory;
-    $types .= 'i';
-}
+if ($currentCategory > 0 && !empty($search)) {
+    $countSql = "
+        SELECT COUNT(*) AS total
+        FROM sanpham
+        WHERE id_DanhMuc = ?
+        AND (Ten LIKE ? OR MoTa LIKE ?)
+    ";
 
-if ($search !== '') {
-    $searchParam = "%$search%";
-    $where[] = '(sp.Ten LIKE ? OR sp.MoTa LIKE ?)';
-    $params[] = $searchParam;
-    $params[] = $searchParam;
-    $types .= 'ss';
-}
+    $countStmt = $conn->prepare($countSql);
+    $countStmt->bind_param("iss", $currentCategory, $searchParam, $searchParam);
+    $countStmt->execute();
+    $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
 
-$whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+    $sql = "
+        SELECT *
+        FROM sanpham
+        WHERE Ten LIKE ?
+        OR MoTa LIKE ?
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    ";
 
-$countSql = "
-    SELECT COUNT(*) AS total
-    FROM sanpham sp
-    $whereSql
-";
-
-$countStmt = $conn->prepare($countSql);
-
-if ($countStmt) {
-    if (!empty($params)) {
-        $countStmt->bind_param($types, ...$params);
-    }
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("issii", $currentCategory, $searchParam, $searchParam, $limit, $offset);
+} elseif ($currentCategory > 0) {
+    $countSql = "
+        SELECT COUNT(*) AS total
+        FROM sanpham
+        WHERE id_DanhMuc = ?
+    ";
 
     $countStmt->execute();
-    $countResult = $countStmt->get_result();
-    $totalProducts = (int)($countResult->fetch_assoc()['total'] ?? 0);
+    $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
+
+    $sql = "
+        SELECT *
+        FROM sanpham
+        WHERE id_DanhMuc = ?
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    ";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iii", $currentCategory, $limit, $offset);
+} elseif (!empty($search)) {
+    $countSql = "
+        SELECT COUNT(*) AS total
+        FROM sanpham
+        WHERE Ten LIKE ?
+        OR MoTa LIKE ?
+    ";
+
+    $countStmt = $conn->prepare($countSql);
+    $countStmt->bind_param("ss", $searchParam, $searchParam);
+    $countStmt->execute();
+    $totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
+
+    $sql = "
+        SELECT *
+        FROM sanpham
+        WHERE Ten LIKE ?
+        OR MoTa LIKE ?
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    ";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssii", $searchParam, $searchParam, $limit, $offset);
+} else {
+    $countSql = "SELECT COUNT(*) AS total FROM sanpham";
+    $totalResult = $conn->query($countSql);
+
+if (!empty($search)) {
+    $whereParts[] = "(Ten LIKE ? OR MoTa LIKE ?)";
+    $searchParam = "%$search%";
+    $params[] = $searchParam;
+    $params[] = $searchParam;
+    $types .= "ss";
 }
 
-$totalPages = max(1, (int)ceil($totalProducts / $limit));
-$page = min($page, $totalPages);
-$offset = ($page - 1) * $limit;
-$limitSql = (int)$limit;
-$offsetSql = (int)$offset;
+$whereSql = !empty($whereParts) ? " WHERE " . implode(" AND ", $whereParts) : "";
+$countSql = "SELECT COUNT(*) AS total FROM sanpham" . $whereSql;
+$countStmt = $conn->prepare($countSql);
+
+    // Lấy tất cả sản phẩm
+    $sql = "
+        SELECT *
+        FROM sanpham
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    ";
+
+$countStmt->execute();
+$totalProducts = $countStmt->get_result()->fetch_assoc()['total'];
+$totalPages = max(1, ceil($totalProducts / $limit));
 
 $sql = "
-    SELECT
-        sp.*,
-        dm.Ten_DanhMuc
-    FROM sanpham sp
-    LEFT JOIN danhmucsanpham dm
-        ON sp.id_DanhMuc = dm.id_DanhMuc
+    SELECT *
+    FROM sanpham
     $whereSql
-    ORDER BY sp.id_DanhMuc ASC, sp.id DESC
+    ORDER BY id DESC
     LIMIT ? OFFSET ?
 ";
 
-$productStmt = $conn->prepare($sql);
+$stmt = $conn->prepare($sql);
+$queryParams = $params;
+$queryParams[] = $limit;
+$queryParams[] = $offset;
+$queryTypes = $types . "ii";
+$stmt->bind_param($queryTypes, ...$queryParams);
+$stmt->execute();
+$result = $stmt->get_result();
 
-if ($productStmt) {
-    $selectParams = $params;
-    $selectParams[] = $limitSql;
-    $selectParams[] = $offsetSql;
-    $selectTypes = $types . 'ii';
+$products = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
-    $productStmt->bind_param($selectTypes, ...$selectParams);
-    $productStmt->execute();
-    $productResult = $productStmt->get_result();
-
-    while ($row = $productResult->fetch_assoc()) {
-        $products[] = $row;
-    }
-}
-
-$productsByCategory = [];
-foreach ($products as $product) {
-    $categoryId = (int)($product['id_DanhMuc'] ?? 0);
-    $categoryName = $product['Ten_DanhMuc'] ?: 'Không rõ';
-
-    if (!isset($productsByCategory[$categoryId])) {
-        $productsByCategory[$categoryId] = [
-            'name' => $categoryName,
-            'items' => [],
-        ];
-    }
-
-    $productsByCategory[$categoryId]['items'][] = $product;
-}
+$totalPages = max(1, (int)ceil($totalProducts / $limit));
 
 ?>
 
@@ -281,30 +319,6 @@ foreach ($products as $product) {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 24px;
-        }
-
-        .category-product-heading {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 14px;
-            padding: 12px 16px;
-            border-left: 5px solid #0d6efd;
-            border-radius: 10px;
-            background: #f1f7ff;
-        }
-
-        .category-product-heading h4 {
-            color: #0d6efd;
-            font-size: 18px;
-            font-weight: 700;
-        }
-
-        .category-product-heading span {
-            color: #6c757d;
-            font-size: 14px;
-            white-space: nowrap;
         }
 
         .product-card {
@@ -439,20 +453,19 @@ foreach ($products as $product) {
                     <h3 class="mb-1">
                         <?= $currentCategoryName ? 'Sản phẩm ' . htmlspecialchars($currentCategoryName) : 'Tất cả sản phẩm' ?>
                     </h3>
-                    <p class="text-muted mb-0">Hiển thị tất cả sản phẩm trong database, sắp xếp và chia nhóm theo id_DanhMuc.</p>
+                    <p class="text-muted mb-0">Chọn danh mục Nam, Nữ hoặc Trẻ Em để xem đúng nhóm sản phẩm.</p>
                 </div>
                 <a href="sanpham.php" class="btn btn-outline-primary btn-sm mt-2 mt-md-0">Xem tất cả</a>
             </div>
-            <div class="row g-4 product-layout">
-                <aside class="col-12 col-lg-3 col-xl-2">
-                    <div class="category-panel">
-                        <p class="text-title">Danh mục</p>
+            <div class="row">
+            <div class="col-md-2">
+    <p class="text-title">Danh mục</p>
 
                         <ul class="list-group list-cus">
 
-                            <!-- TẤT CẢ -->
-                            <li class="list-item d-flex justify-content-between align-items-center
-                                <?= $currentCategory == 0 ? 'active-category' : '' ?>">
+        <!-- TẤT CẢ -->
+        <li class="list-item d-flex justify-content-between
+            <?= $currentCategory == 0 ? 'active-category' : '' ?>">
 
                                 <a href="sanpham.php">Tất cả</a>
                                 <span>(<?= $allCategoryProducts ?>)</span>
@@ -463,9 +476,9 @@ foreach ($products as $product) {
                                 <li class="list-item d-flex justify-content-between align-items-center
                                     <?= $currentCategory == $dm['id_DanhMuc'] ? 'active-category' : '' ?>">
 
-                                    <a href="sanpham.php?danhmuc=<?= $dm['id_DanhMuc'] ?>">
-                                        <?= htmlspecialchars($dm['Ten_DanhMuc']) ?>
-                                    </a>
+                <a href="sanpham.php?danhmuc=<?= $dm['id_DanhMuc'] ?>">
+                    <?= htmlspecialchars($dm['Ten_DanhMuc']) ?>
+                </a>
 
                                     <span>(<?= $dm['total'] ?>)</span>
                                 </li>
@@ -486,56 +499,43 @@ foreach ($products as $product) {
                         </p>
                     </div>
 
-                    <?php if (!empty($productsByCategory)): ?>
-                        <?php foreach ($productsByCategory as $categoryId => $group): ?>
-                            <div class="category-product-section mb-4">
-                                <div class="category-product-heading">
-                                    <h4 class="mb-0">
-                                        id_DanhMuc <?= (int)$categoryId ?> - <?= htmlspecialchars($group['name']) ?>
-                                    </h4>
-                                    <span><?= count($group['items']) ?> sản phẩm trên trang này</span>
-                                </div>
-
-                                <div class="product-grid">
-                                    <?php foreach ($group['items'] as $row): ?>
-                                        <article class="product-card">
-                                            <a href="./detail.php?id=<?= $row['id'] ?>">
-                                                <img src="./assets/img/<?= htmlspecialchars($row['Anh']) ?>" alt="<?= htmlspecialchars($row['Ten']) ?>">
-                                            </a>
-
-                                            <div class="card-body">
-                                                <h5 class="card-title"><?= htmlspecialchars($row['Ten']) ?></h5>
-                                                <p class="card-text description-clamp"><?= htmlspecialchars($row['MoTa']) ?></p>
-                                                <p class="mb-1">id_DanhMuc: <b><?= (int)$row['id_DanhMuc'] ?></b></p>
-                                                <p class="mb-1">Danh mục: <b><?= htmlspecialchars($row['Ten_DanhMuc'] ?: 'Không rõ') ?></b></p>
-                                                <p class="mb-1">Tồn kho: <?= (int)$row['soluong'] ?></p>
-                                                <p class="text-danger fw-bold">
-                                                    Giá: <?= number_format($row['Gia'], 0, ',', '.') ?> VNĐ
-                                                </p>
-
-                                                <div class="product-actions d-flex align-items-center gap-2 flex-nowrap">
-                                                    <a href="detail.php?id=<?= $row['id'] ?>" class="btn btn-primary btn-detail text-nowrap">
-                                                        Chi tiết sản phẩm
-                                                    </a>
-                                                    <form action="themvaogio.php" method="POST" class="m-0">
-                                                        <input type="hidden" name="idsanpham" value="<?= $row['id'] ?>">
-                                                        <button type="submit" class="btn btn-success d-flex justify-content-center align-items-center cart-btn">
-                                                            <i class="fa-solid fa-cart-plus"></i>
-                                                        </button>
-                                                    </form>
-                                                </div>
+                <div class="col-md-10">
+                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                        <?php if (!empty($products)): ?>
+                            <?php foreach ($products as $row): ?>
+                                <div class="col">
+                                    <div class="card h-100 box-sca">
+                                        <a href="./detail.php?id=<?= $row['id'] ?>">
+                                            <img src="./assets/img/<?= htmlspecialchars($row['Anh']) ?>" class="card-img-top mt-2" alt="<?= htmlspecialchars($row['Ten']) ?>">
+                                        </a>
+                                        <div class="card-body">
+                                            <h5 class="card-title"><?= htmlspecialchars($row['Ten']) ?></h5>
+                                            <p class="card-text description-clamp"><?= htmlspecialchars($row['MoTa']) ?></p>
+                                            <p class="mb-1">Danh mục: <b><?= htmlspecialchars($row['Ten_DanhMuc'] ?: 'Không rõ') ?></b></p>
+                                            <p class="mb-1">Tồn kho: <?= (int)$row['soluong'] ?></p>
+                                            <p>Giá: <?= number_format($row['Gia'], 0, ',', '.') ?> <b>VNĐ</b></p>
+                                            <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                                <a href="detail.php?id=<?= $row['id'] ?>" class="btn btn-primary btn-detail text-nowrap">
+                                                    Chi tiết sản phẩm
+                                                </a>
+                                                <form action="themvaogio.php" method="POST" class="m-0">
+                                                    <input type="hidden" name="idsanpham" value="<?= $row['id'] ?>">
+                                                    <button type="submit" class="btn btn-success d-flex justify-content-center align-items-center cart-btn">
+                                                        <i class="fa-solid fa-cart-plus"></i>
+                                                    </button>
+                                                </form>
                                             </div>
                                         </article>
                                     <?php endforeach; ?>
                                 </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="col-12">
+                                <div class="alert alert-info mb-0">Không tìm thấy sản phẩm nào trong danh mục này.</div>
                             </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="alert alert-info mb-0">
-                            Không tìm thấy sản phẩm nào trong danh mục này.
-                        </div>
-                    <?php endif; ?>
-                </section>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
 
             <div class="mt-4 d-flex justify-content-center">
