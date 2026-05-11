@@ -143,8 +143,18 @@ CREATE TABLE `sanpham` (
 --
 
 INSERT INTO `sanpham` (`id`, `Ten`, `MoTa`, `Gia`, `soluong`, `Anh`, `id_DanhMuc`) VALUES
-(1, 'Giay 1', 'San pham dep', 1231, 131, 'giay.jpg', 1),
-(2, 'Giay 4', 'San pham dep', 13, 132, 'giay3.jpg', 2);
+(1, 'thời trang nam', 'San pham dep', 200000, 123, 'cat-item1.jpg', 1),
+(2, 'túi xách', 'San pham dep', 1300000, 117, 'cat-item3.jpg', 2),
+(3, 'Áo thun nam', 'Áo thun cotton cao cấp', 250000, 50, 'ao-thun-nam.jpg', 1),
+(4, 'Quần jean nam', 'Quần jean form slim fit', 450000, 40, 'quan-jean-nam.jpg', 1),
+(5, 'Áo khoác nữ', 'Áo khoác thời trang mùa đông', 650000, 30, 'ao-khoac-nu.jpg', 1),
+(6, 'Váy nữ', 'Váy thiết kế thanh lịch', 550000, 24, 'vay-nu.jpg', 1),
+(7, 'Túi xách da', 'Túi xách nữ da cao cấp', 1200000, 15, 'tui-xach-da.jpg', 2),
+(8, 'Balo thời trang', 'Balo chống nước tiện lợi', 700000, 35, 'balo-thoi-trang.jpg', 2),
+(9, 'Ví nam', 'Ví da nam nhỏ gọn', 350000, 57, 'vi-nam.jpg', 2),
+(10, 'Giày sneaker', 'Giày sneaker trẻ trung', 900000, 16, 'giay-sneaker.jpg', 3),
+(11, 'Dép sandal', 'Dép sandal đi biển', 280000, 42, 'dep-sandal.jpg', 3),
+(12, 'Mũ lưỡi trai', 'Mũ thời trang unisex', 180000, 70, 'mu-luoi-trai.jpg', 1);
 
 -- --------------------------------------------------------
 
@@ -293,7 +303,7 @@ ALTER TABLE `role`
 -- AUTO_INCREMENT cho bảng `sanpham`
 --
 ALTER TABLE `sanpham`
-  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT cho bảng `taikhoan`
